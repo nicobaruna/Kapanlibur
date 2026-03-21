@@ -5,7 +5,7 @@ workflows:
     instance_type: mac_mini_m1 # Atau linux untuk build Android saja agar lebih hemat
     environment:
       node: latest
-      ruby: 2.7.x
+      ruby: 2.7.8
     scripts:
       - name: Install dependencies
         script: |
