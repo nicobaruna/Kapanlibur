@@ -53,31 +53,38 @@ export class NotificationService {
       const trigger: TimestampTrigger = {
         type: TriggerType.TIMESTAMP,
         timestamp: triggerDate.getTime(),
+        alarmManager: {
+          allowWhileIdle: true,
+        },
       };
 
-      await notifee.createTriggerNotification(
-        {
-          id: offset.notifId,
-          title: `${holiday.emoji} ${holiday.shortName} ${offset.label}!`,
-          body: `${holiday.name} jatuh pada ${new Date(
-            holiday.date + 'T00:00:00',
-          ).toLocaleDateString('id-ID', {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-          })}`,
-          android: {
-            channelId: CHANNEL_ID,
-            smallIcon: 'ic_notification',
-            color: '#C8102E',
-            pressAction: {
-              id: 'default',
+      try {
+        await notifee.createTriggerNotification(
+          {
+            id: offset.notifId,
+            title: `${holiday.emoji} ${holiday.shortName} ${offset.label}!`,
+            body: `${holiday.name} jatuh pada ${new Date(
+              holiday.date + 'T00:00:00',
+            ).toLocaleDateString('id-ID', {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+            })}`,
+            android: {
+              channelId: CHANNEL_ID,
+              smallIcon: 'ic_notification',
+              color: '#C8102E',
+              pressAction: {
+                id: 'default',
+              },
+              importance: AndroidImportance.HIGH,
             },
-            importance: AndroidImportance.HIGH,
           },
-        },
-        trigger,
-      );
+          trigger,
+        );
+      } catch (e) {
+        console.warn(`[Notifee] Skip ${offset.notifId}:`, e);
+      }
     }
   }
 

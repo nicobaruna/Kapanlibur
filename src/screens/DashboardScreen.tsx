@@ -86,7 +86,12 @@ export default function DashboardScreen() {
         setLoading(false);
         return;
       }
-      await NotificationService.scheduleAllReminders();
+      // Schedule reminders — tolerate failures (e.g. exact alarm permission not granted yet)
+      try {
+        await NotificationService.scheduleAllReminders();
+      } catch (scheduleErr) {
+        console.warn('[Notifee] scheduleAllReminders failed:', scheduleErr);
+      }
       await NotificationService.showTestNotification();
       setNotifEnabled(true);
       Alert.alert(
@@ -94,8 +99,9 @@ export default function DashboardScreen() {
         'Notifikasi H-7 dan H-1 sebelum setiap hari libur sudah diaktifkan.',
       );
     } catch (err) {
-      Alert.alert('Error', 'Gagal mengaktifkan notifikasi. Coba lagi.');
-      console.error(err);
+      const msg = err instanceof Error ? err.message : String(err);
+      Alert.alert('Gagal Mengaktifkan Notifikasi', msg);
+      console.error('[Notifee] Error:', err);
     } finally {
       setLoading(false);
     }
