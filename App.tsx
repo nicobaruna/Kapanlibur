@@ -8,6 +8,7 @@ import notifee, {EventType} from '@notifee/react-native';
 import DashboardScreen from './src/screens/DashboardScreen';
 import CalendarScreen from './src/screens/CalendarScreen';
 import LongWeekendScreen from './src/screens/LongWeekendScreen';
+import FinancialPlannerScreen from './src/screens/FinancialPlannerScreen';
 import {NotificationService} from './src/services/NotificationService';
 
 const Tab = createBottomTabNavigator();
@@ -98,6 +99,17 @@ export default function App() {
               tabBarLabel: 'Long Weekend',
               tabBarIcon: ({focused, color}) => (
                 <TabBarEmoji emoji="🏖️" focused={focused} color={color} />
+              ),
+            }}
+          />
+
+          <Tab.Screen
+            name="FinancialPlanner"
+            component={FinancialPlannerScreen}
+            options={{
+              tabBarLabel: 'Finansial',
+              tabBarIcon: ({focused, color}) => (
+                <TabBarEmoji emoji="💰" focused={focused} color={color} />
               ),
             }}
           />
