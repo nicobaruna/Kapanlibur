@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find D:devKapanlibur.claudeworktreesdetermined-germain/ios -name AppIcon* -o -name *Icon*)",
+      "Bash(find D:devKapanlibur.claudeworktreesdetermined-germain -maxdepth 3 -name *.png -o -name *.jpg -o -name icon*)",
+      "Bash(file \"D:\\\\dev\\\\Kapanlibur\\\\.claude\\\\worktrees\\\\determined-germain/android/app/src/main/res/mipmap-\"*\"/ic_launcher.png\")",
+      "Bash(file \"D:\\\\dev\\\\Kapanlibur\\\\.claude\\\\worktrees\\\\determined-germain/android/app/src/main/res/mipmap-\"*\"/ic_launcher_round.png\")",
+      "Bash(find D:devKapanlibur.claudeworktreesdetermined-germain -type f \\\\\\(-name *icon* -o -name *Icon* \\\\\\) ! -path */.*)",
+      "Bash(magick --version)",
+      "Bash(convert --version)",
+      "Bash(python -c \"from PIL import Image; print\\(''Pillow OK''\\)\")",
+      "Bash(python -m pip install Pillow -q)",
+      "Bash(gh pr:*)",
+      "Bash(where gh:*)"
+    ]
+  }
+}
