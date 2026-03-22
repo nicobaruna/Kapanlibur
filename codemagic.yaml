@@ -2,19 +2,35 @@ workflows:
   react-native-android:
     name: React Native Android Build
     max_build_duration: 60
-    instance_type: mac_mini_m1 # Atau linux untuk build Android saja agar lebih hemat
+    instance_type: mac_mini_m1
     environment:
-      node: latest
-      ruby: 2.7.8
+      node: 18.17.0          # WAJIB spesifik — "latest" tidak didukung Codemagic
+      ruby: 3.2.0            # Ruby 2.7.x sudah EOL, pakai 3.x
+      java: 17               # WAJIB untuk Gradle 8+ / React Native 0.71+
+      vars:
+        ANDROID_HOME: /usr/local/lib/android/sdk
+        # Untuk release build — simpan di Codemagic Environment Variables (encrypted):
+        # CM_KEYSTORE          → isi file .keystore (base64)
+        # CM_KEYSTORE_PASSWORD → password keystore
+        # CM_KEY_ALIAS         → alias key
+        # CM_KEY_PASSWORD      → password key
     scripts:
       - name: Install dependencies
         script: |
           npm install
+      - name: Set up keystore (release signing)
+        script: |
+          echo $CM_KEYSTORE | base64 --decode > android/app/release.keystore
       - name: Build Android APK
         script: |
-          cd android && ./gradlew assembleRelease
+          cd android && ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file=release.keystore \
+            -Pandroid.injected.signing.store.password=$CM_KEYSTORE_PASSWORD \
+            -Pandroid.injected.signing.key.alias=$CM_KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$CM_KEY_PASSWORD
     artifacts:
       - android/app/build/outputs/apk/release/*.apk
+      - android/app/build/outputs/bundle/release/*.aab  # Tambahan: untuk Play Store
     publishing:
       email:
         recipients:
@@ -22,19 +38,42 @@ workflows:
 
   react-native-ios:
     name: React Native iOS Build
+    max_build_duration: 90             # WAJIB — iOS build bisa > 60 menit
     instance_type: mac_mini_m1
     environment:
-      node: latest
-      xcode: latest
+      node: 18.17.0                    # Sama dengan Android, harus konsisten
+      xcode: 15.2                      # WAJIB spesifik — "latest" tidak didukung
       cocoapods: default
+      ruby: 3.2.0
+      # Untuk code signing — simpan di Codemagic Code Signing tab:
+      # CERTIFICATE_PRIVATE_KEY  → .p12 private key
+      # PROVISIONING_PROFILE     → .mobileprovision
     scripts:
       - name: Install dependencies
         script: |
           npm install
+      - name: Install CocoaPods
+        script: |
           cd ios && pod install
+      - name: Set up code signing
+        script: |
+          keychain initialize
+          # Ambil certificate & provisioning dari Codemagic Code Signing
+          app-store-connect fetch-signing-files \
+            "com.yourcompany.yourapp" \     # GANTI dengan bundle ID Anda
+            --type IOS_APP_STORE \
+            --create
+          keychain add-certificates
+          xcode-project use-profiles
       - name: Build iOS (.ipa)
         script: |
-          xcode-project build-ipa --workspace ios/YourProject.xcworkspace --scheme YourScheme
+          xcode-project build-ipa \
+            --workspace ios/YourProject.xcworkspace \  # GANTI YourProject
+            --scheme YourScheme                         # GANTI YourScheme
     artifacts:
       - build/ios/ipa/*.ipa
-
+      - /tmp/xcodebuild_logs/*.log   # Berguna untuk debug jika build gagal
+    publishing:
+      email:
+        recipients:
+          - user@example.com
