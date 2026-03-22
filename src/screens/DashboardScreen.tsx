@@ -22,6 +22,8 @@ import {
   formatShortDate,
   formatLongWeekendRange,
   countdownLabel,
+  CUTI_OPPORTUNITIES_2026,
+  CutiOpportunity,
 } from '../utils/dateUtils';
 import {NotificationService} from '../services/NotificationService';
 
@@ -44,6 +46,7 @@ export default function DashboardScreen() {
   const [nextHoliday, setNextHoliday] = useState<Holiday | null>(null);
   const [upcomingHolidays, setUpcomingHolidays] = useState<Holiday[]>([]);
   const [nextLongWeekend, setNextLongWeekend] = useState<LongWeekend | null>(null);
+  const [cutiRecommendations, setCutiRecommendations] = useState<CutiOpportunity[]>([]);
   const [notifEnabled, setNotifEnabled] = useState(false);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -52,6 +55,11 @@ export default function DashboardScreen() {
     setNextHoliday(getNextHoliday());
     setUpcomingHolidays(getUpcomingHolidays(6));
     setNextLongWeekend(getNextLongWeekend());
+    const upcoming = CUTI_OPPORTUNITIES_2026
+      .filter(opp => getDaysUntil(opp.date) >= 0)
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .slice(0, 5);
+    setCutiRecommendations(upcoming);
   }, []);
 
   useFocusEffect(
@@ -173,6 +181,49 @@ export default function DashboardScreen() {
             <Text style={styles.lwCountdown}>
               ⏳ {countdownLabel(getDaysUntil(nextLongWeekend.startDate))}
             </Text>
+          </View>
+        )}
+
+        {/* ===== REKOMENDASI CUTI ===== */}
+        {cutiRecommendations.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>💡 Rekomendasi Ambil Cuti</Text>
+            <Text style={styles.cutiRecomSub}>
+              Cuti 1 hari, dapat libur panjang!
+            </Text>
+            {cutiRecommendations.map(opp => {
+              const days = getDaysUntil(opp.date);
+              return (
+                <View key={opp.date} style={styles.cutiRecomRow}>
+                  <View style={styles.cutiRecomLeft}>
+                    <View style={styles.cutiRecomDot} />
+                  </View>
+                  <View style={styles.cutiRecomContent}>
+                    <View style={styles.cutiRecomHeader}>
+                      <Text style={styles.cutiRecomDate}>
+                        {formatDate(opp.date)}
+                      </Text>
+                      <View style={styles.cutiRecomBadge}>
+                        <Text style={styles.cutiRecomBadgeText}>
+                          {opp.totalDays} hari
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={styles.cutiRecomInfo}>
+                      {formatShortDate(opp.startDate)} –{' '}
+                      {formatShortDate(opp.endDate)} · {opp.holidayName}
+                    </Text>
+                    <Text style={styles.cutiRecomCountdown}>
+                      {days === 0
+                        ? '🎉 Hari ini!'
+                        : days === 1
+                        ? '⏰ Besok!'
+                        : `⏳ ${days} hari lagi`}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -510,6 +561,74 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontSize: 10,
     fontWeight: '700',
+  },
+
+  // Cuti recommendation
+  cutiRecomSub: {
+    fontSize: 13,
+    color: COLORS.textSub,
+    marginBottom: 10,
+    marginTop: -6,
+    paddingLeft: 2,
+  },
+  cutiRecomRow: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.card,
+    borderRadius: 12,
+    marginBottom: 8,
+    overflow: 'hidden',
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.06,
+    shadowRadius: 2,
+  },
+  cutiRecomLeft: {
+    width: 4,
+    backgroundColor: COLORS.longweekend,
+    alignSelf: 'stretch',
+  },
+  cutiRecomDot: {
+    flex: 1,
+  },
+  cutiRecomContent: {
+    flex: 1,
+    padding: 12,
+    paddingLeft: 12,
+  },
+  cutiRecomHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
+  cutiRecomDate: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.text,
+    flex: 1,
+    marginRight: 8,
+  },
+  cutiRecomBadge: {
+    backgroundColor: COLORS.longweekend,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  cutiRecomBadgeText: {
+    color: COLORS.white,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  cutiRecomInfo: {
+    fontSize: 12,
+    color: COLORS.textSub,
+    marginBottom: 4,
+  },
+  cutiRecomCountdown: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: COLORS.longweekend,
   },
 
   // Notification

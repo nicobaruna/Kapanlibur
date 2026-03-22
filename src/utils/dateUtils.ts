@@ -1,4 +1,4 @@
-import {Holiday, HOLIDAYS_2026, LongWeekend, LONG_WEEKENDS_2026} from '../data/holidays2026';
+import {Holiday, HOLIDAYS_2026, LongWeekend, LONG_WEEKENDS_2026, getAllNonWorkingDates} from '../data/holidays2026';
 
 const MONTHS_ID = [
   'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -104,3 +104,92 @@ export function formatLongWeekendRange(lw: LongWeekend): string {
 export function getMonthName(month: number): string {
   return MONTHS_ID[month];
 }
+
+export interface CutiOpportunity {
+  date: string;        // Workday to take as leave
+  startDate: string;   // Start of resulting consecutive off block
+  endDate: string;     // End of resulting consecutive off block
+  totalDays: number;   // Total consecutive days off
+  holidayName: string; // Related holiday name
+}
+
+export function getCutiOpportunities(): CutiOpportunity[] {
+  const nonWorking = getAllNonWorkingDates(2026);
+  const holidayMap = new Map<string, Holiday>();
+  HOLIDAYS_2026.forEach(h => holidayMap.set(h.date, h));
+
+  const opportunities: CutiOpportunity[] = [];
+  const seen = new Set<string>();
+
+  const cur = new Date('2026-01-01T00:00:00');
+  const endYear = new Date('2026-12-31T00:00:00');
+
+  while (cur <= endYear) {
+    const dateStr = cur.toISOString().split('T')[0];
+    const dayOfWeek = cur.getDay();
+
+    // Only consider weekdays not already non-working
+    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !nonWorking.has(dateStr) && !seen.has(dateStr)) {
+      nonWorking.add(dateStr);
+
+      // Find consecutive run this date would belong to
+      let runStart = dateStr;
+      let runEnd = dateStr;
+
+      const p = new Date(dateStr + 'T00:00:00');
+      p.setDate(p.getDate() - 1);
+      while (nonWorking.has(p.toISOString().split('T')[0])) {
+        runStart = p.toISOString().split('T')[0];
+        p.setDate(p.getDate() - 1);
+      }
+
+      const n = new Date(dateStr + 'T00:00:00');
+      n.setDate(n.getDate() + 1);
+      while (nonWorking.has(n.toISOString().split('T')[0])) {
+        runEnd = n.toISOString().split('T')[0];
+        n.setDate(n.getDate() + 1);
+      }
+
+      const totalDays =
+        Math.round(
+          (new Date(runEnd + 'T00:00:00').getTime() -
+            new Date(runStart + 'T00:00:00').getTime()) /
+            (1000 * 60 * 60 * 24),
+        ) + 1;
+
+      if (totalDays >= 3) {
+        // Run must contain at least one existing holiday (not just weekends)
+        const c = new Date(runStart + 'T00:00:00');
+        const e = new Date(runEnd + 'T00:00:00');
+        const existingHolidays: string[] = [];
+        while (c <= e) {
+          const d = c.toISOString().split('T')[0];
+          if (d !== dateStr && holidayMap.has(d)) {
+            existingHolidays.push(d);
+          }
+          c.setDate(c.getDate() + 1);
+        }
+
+        if (existingHolidays.length > 0) {
+          const relatedHoliday = holidayMap.get(existingHolidays[0])!;
+          opportunities.push({
+            date: dateStr,
+            startDate: runStart,
+            endDate: runEnd,
+            totalDays,
+            holidayName: relatedHoliday.shortName,
+          });
+          seen.add(dateStr);
+        }
+      }
+
+      nonWorking.delete(dateStr);
+    }
+
+    cur.setDate(cur.getDate() + 1);
+  }
+
+  return opportunities;
+}
+
+export const CUTI_OPPORTUNITIES_2026 = getCutiOpportunities();

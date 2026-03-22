@@ -9,8 +9,14 @@ import {
   Platform,
 } from 'react-native';
 import {Calendar, DateData} from 'react-native-calendars';
-import {HOLIDAYS_2026, LONG_WEEKENDS_2026, Holiday} from '../data/holidays2026';
-import {formatDate, formatMonthYear, getDaysUntil} from '../utils/dateUtils';
+import {HOLIDAYS_2026, Holiday} from '../data/holidays2026';
+import {
+  formatDate,
+  getDaysUntil,
+  CUTI_OPPORTUNITIES_2026,
+  CutiOpportunity,
+  formatShortDate,
+} from '../utils/dateUtils';
 
 const COLORS = {
   red: '#C8102E',
@@ -22,18 +28,18 @@ const COLORS = {
   textSub: '#6B7280',
   national: '#C8102E',
   cuti: '#E67E22',
-  longweekend: '#27AE60',
+  potentialCuti: '#27AE60',
   border: '#E8E0D8',
 };
 
 type MarkedDates = {
   [key: string]: {
     selected?: boolean;
-    marked?: boolean;
-    dotColor?: string;
     selectedColor?: string;
-    customStyles?: object;
-    dots?: Array<{key: string; color: string; selectedDotColor?: string}>;
+    customStyles?: {
+      container?: object;
+      text?: object;
+    };
   };
 };
 
@@ -41,61 +47,44 @@ export default function CalendarScreen() {
   const today = new Date().toISOString().split('T')[0];
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
+  // Build a map of potential cuti dates for quick lookup
+  const cutiOpportunityMap = useMemo(() => {
+    const map = new Map<string, CutiOpportunity>();
+    CUTI_OPPORTUNITIES_2026.forEach(opp => map.set(opp.date, opp));
+    return map;
+  }, []);
+
   // Build marked dates for calendar
   const markedDates = useMemo<MarkedDates>(() => {
     const marks: MarkedDates = {};
 
-    // Mark all long weekend days with green background
-    LONG_WEEKENDS_2026.forEach(lw => {
-      const cur = new Date(lw.startDate + 'T00:00:00');
-      const end = new Date(lw.endDate + 'T00:00:00');
-      while (cur <= end) {
-        const key = cur.toISOString().split('T')[0];
-        if (!marks[key]) marks[key] = {dots: []};
-        if (!marks[key].dots) marks[key].dots = [];
-        marks[key].dots!.push({
-          key: 'lw',
-          color: COLORS.longweekend,
-          selectedDotColor: COLORS.white,
-        });
-        cur.setDate(cur.getDate() + 1);
-      }
+    // 1. Mark potential cuti dates (green) — lowest priority
+    CUTI_OPPORTUNITIES_2026.forEach(opp => {
+      marks[opp.date] = {
+        customStyles: {
+          container: {backgroundColor: COLORS.potentialCuti, borderRadius: 17},
+          text: {color: COLORS.white, fontWeight: '700'},
+        },
+      };
     });
 
-    // Mark holidays
+    // 2. Mark holidays (overrides potential cuti)
     HOLIDAYS_2026.forEach(h => {
-      const key = h.date;
-      if (!marks[key]) marks[key] = {dots: []};
-      if (!marks[key].dots) marks[key].dots = [];
-
-      const isCuti = h.type.includes('cuti_bersama');
       const isNasional = h.type.includes('nasional');
-
-      const dotColor = isCuti && !isNasional ? COLORS.cuti : COLORS.national;
-      const dotKey = isNasional ? 'nasional' : 'cuti';
-
-      // Remove duplicate dot keys
-      const existingKeys = marks[key].dots!.map(d => d.key);
-      if (!existingKeys.includes(dotKey)) {
-        marks[key].dots!.push({
-          key: dotKey,
-          color: dotColor,
-          selectedDotColor: COLORS.white,
-        });
-      }
+      const bgColor = isNasional ? COLORS.national : COLORS.cuti;
+      marks[h.date] = {
+        customStyles: {
+          container: {backgroundColor: bgColor, borderRadius: 17},
+          text: {color: COLORS.white, fontWeight: '700'},
+        },
+      };
     });
 
-    // Mark selected date
+    // 3. Selected date (highest priority)
     if (selectedDate) {
       if (!marks[selectedDate]) marks[selectedDate] = {};
       marks[selectedDate].selected = true;
-      marks[selectedDate].selectedColor = COLORS.red;
-    }
-
-    // Mark today
-    if (!selectedDate || selectedDate !== today) {
-      if (!marks[today]) marks[today] = {};
-      // Today gets a mild highlight if not selected
+      marks[selectedDate].selectedColor = COLORS.redDark;
     }
 
     return marks;
@@ -123,11 +112,37 @@ export default function CalendarScreen() {
   const renderSelectedInfo = () => {
     if (!selectedDate) return null;
 
-    if (selectedHolidays.length === 0) {
+    const days = getDaysUntil(selectedDate);
+    const cutiOpp = cutiOpportunityMap.get(selectedDate);
+
+    if (selectedHolidays.length === 0 && !cutiOpp) {
       return (
         <View style={styles.selectedInfoCard}>
           <Text style={styles.selectedDateText}>{formatDate(selectedDate)}</Text>
           <Text style={styles.noHolidayText}>Hari kerja biasa</Text>
+        </View>
+      );
+    }
+
+    if (selectedHolidays.length === 0 && cutiOpp) {
+      return (
+        <View style={[styles.selectedInfoCard, {borderLeftColor: COLORS.potentialCuti}]}>
+          <Text style={styles.selectedDateText}>{formatDate(selectedDate)}</Text>
+          <View style={styles.selectedHolidayRow}>
+            <Text style={styles.selectedHolidayEmoji}>✂️</Text>
+            <View style={styles.selectedHolidayInfo}>
+              <Text style={styles.selectedHolidayName}>Potensi Cuti Optimal</Text>
+              <Text style={[styles.selectedHolidayName, {fontSize: 13, fontWeight: '600', color: COLORS.textSub}]}>
+                Ambil cuti → libur {cutiOpp.totalDays} hari
+              </Text>
+              <Text style={[styles.selectedHolidayName, {fontSize: 12, fontWeight: '500', color: COLORS.textSub}]}>
+                {formatShortDate(cutiOpp.startDate)} – {formatShortDate(cutiOpp.endDate)} · {cutiOpp.holidayName}
+              </Text>
+            </View>
+          </View>
+          <Text style={[styles.selectedCountdown, {color: COLORS.potentialCuti}]}>
+            {days > 0 ? `⏳ ${days} hari lagi` : days === 0 ? '🎉 Hari ini!' : 'Sudah berlalu'}
+          </Text>
         </View>
       );
     }
@@ -156,9 +171,9 @@ export default function CalendarScreen() {
           </View>
         ))}
         <Text style={styles.selectedCountdown}>
-          ⏳ {getDaysUntil(selectedDate) > 0
-            ? `${getDaysUntil(selectedDate)} hari lagi`
-            : getDaysUntil(selectedDate) === 0
+          {days > 0
+            ? `⏳ ${days} hari lagi`
+            : days === 0
             ? '🎉 Hari ini!'
             : 'Sudah berlalu'}
         </Text>
@@ -176,25 +191,9 @@ export default function CalendarScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Legend */}
-        <View style={styles.legend}>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, {backgroundColor: COLORS.national}]} />
-            <Text style={styles.legendText}>Libur Nasional</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, {backgroundColor: COLORS.cuti}]} />
-            <Text style={styles.legendText}>Cuti Bersama</Text>
-          </View>
-          <View style={styles.legendItem}>
-            <View style={[styles.legendDot, {backgroundColor: COLORS.longweekend}]} />
-            <Text style={styles.legendText}>Long Weekend</Text>
-          </View>
-        </View>
-
         {/* Calendar */}
         <Calendar
-          markingType="multi-dot"
+          markingType="custom"
           markedDates={markedDates}
           onDayPress={onDayPress}
           initialDate={today}
@@ -204,7 +203,7 @@ export default function CalendarScreen() {
             backgroundColor: COLORS.bg,
             calendarBackground: COLORS.card,
             textSectionTitleColor: COLORS.textSub,
-            selectedDayBackgroundColor: COLORS.red,
+            selectedDayBackgroundColor: COLORS.redDark,
             selectedDayTextColor: COLORS.white,
             todayTextColor: COLORS.red,
             dayTextColor: COLORS.text,
@@ -223,6 +222,22 @@ export default function CalendarScreen() {
           }}
           style={styles.calendar}
         />
+
+        {/* Legend — below calendar */}
+        <View style={styles.legend}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, {backgroundColor: COLORS.national}]} />
+            <Text style={styles.legendText}>Libur Nasional</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, {backgroundColor: COLORS.cuti}]} />
+            <Text style={styles.legendText}>Cuti Bersama</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, {backgroundColor: COLORS.potentialCuti}]} />
+            <Text style={styles.legendText}>Potensi Cuti</Text>
+          </View>
+        </View>
 
         {/* Selected date info */}
         {renderSelectedInfo()}
@@ -316,18 +331,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 16,
     backgroundColor: COLORS.card,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
   },
   legendItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
   },
   legendDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
   },
   legendText: {
     fontSize: 11,
@@ -335,9 +352,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   calendar: {
-    marginBottom: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
+    borderBottomWidth: 0,
   },
   selectedInfoCard: {
     margin: 16,
