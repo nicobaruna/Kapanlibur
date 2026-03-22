@@ -11,7 +11,8 @@
       "Bash(python -c \"from PIL import Image; print\\(''Pillow OK''\\)\")",
       "Bash(python -m pip install Pillow -q)",
       "Bash(gh pr:*)",
-      "Bash(where gh:*)"
+      "Bash(where gh:*)",
+      "Bash(find D:devKapanlibur.claudeworktreesdetermined-germainandroid -name MainActivity*)"
     ]
   }
 }
