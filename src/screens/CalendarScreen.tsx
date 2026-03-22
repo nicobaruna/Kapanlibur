@@ -1,4 +1,4 @@
-import React, {useState, useMemo} from 'react';
+import React, {useState, useMemo, useCallback} from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import {Calendar, DateData} from 'react-native-calendars';
+import {useRoute, useFocusEffect} from '@react-navigation/native';
 import {HOLIDAYS_2026, Holiday} from '../data/holidays2026';
 import {
   formatDate,
@@ -45,7 +46,20 @@ type MarkedDates = {
 
 export default function CalendarScreen() {
   const today = new Date().toISOString().split('T')[0];
+  const route = useRoute<any>();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [currentMonth, setCurrentMonth] = useState<string>(today);
+
+  // When navigated from Long Weekend screen, jump to the passed date
+  useFocusEffect(
+    useCallback(() => {
+      const incoming = route.params?.selectedDate as string | undefined;
+      if (incoming) {
+        setSelectedDate(incoming);
+        setCurrentMonth(incoming);
+      }
+    }, [route.params?.selectedDate]),
+  );
 
   // Build a map of potential cuti dates for quick lookup
   const cutiOpportunityMap = useMemo(() => {
@@ -196,9 +210,10 @@ export default function CalendarScreen() {
           markingType="custom"
           markedDates={markedDates}
           onDayPress={onDayPress}
-          initialDate={today}
+          current={currentMonth}
           minDate="2026-01-01"
           maxDate="2026-12-31"
+          onMonthChange={month => setCurrentMonth(month.dateString)}
           theme={{
             backgroundColor: COLORS.bg,
             calendarBackground: COLORS.card,
