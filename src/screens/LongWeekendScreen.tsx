@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -6,13 +6,17 @@ import {
   ScrollView,
   StatusBar,
   Platform,
+  TouchableOpacity,
+  Modal,
+  Share,
+  Linking,
+  Pressable,
 } from 'react-native';
 import {LONG_WEEKENDS_2026} from '../data/holidays2026';
 import {
   formatLongWeekendRange,
   getDaysUntil,
   countdownLabel,
-  formatDate,
 } from '../utils/dateUtils';
 
 const COLORS = {
@@ -28,6 +32,7 @@ const COLORS = {
   greenLight: '#D5F5E3',
   redLight: '#FDECEA',
   border: '#E8E0D8',
+  overlay: 'rgba(0,0,0,0.5)',
 };
 
 const DAY_COLORS = [
@@ -35,9 +40,172 @@ const DAY_COLORS = [
   '#1ABC9C', '#D35400', '#C0392B',
 ];
 
+const SOCIAL_PLATFORMS = [
+  {
+    id: 'x',
+    label: 'X',
+    icon: '𝕏',
+    color: '#000000',
+    bg: '#F0F0F0',
+  },
+  {
+    id: 'threads',
+    label: 'Threads',
+    icon: '@',
+    color: '#FFFFFF',
+    bg: '#000000',
+  },
+  {
+    id: 'instagram',
+    label: 'Instagram',
+    icon: '📸',
+    color: '#FFFFFF',
+    bg: '#E1306C',
+  },
+  {
+    id: 'tiktok',
+    label: 'TikTok',
+    icon: '♪',
+    color: '#FFFFFF',
+    bg: '#010101',
+  },
+];
+
+function buildShareText(lw: typeof LONG_WEEKENDS_2026[0]): string {
+  const range = formatLongWeekendRange(lw);
+  const holidayLines = lw.holidays
+    .filter((h, idx, arr) => arr.findIndex(x => x.id === h.id) === idx)
+    .map(h => `${h.emoji} ${h.shortName}`)
+    .join('\n');
+
+  return (
+    `🏖️ Long Weekend ${lw.label}!\n` +
+    `📅 ${range} · ${lw.totalDays} hari\n\n` +
+    `${holidayLines}\n\n` +
+    `Tandai kalendermu! 🗓️\n` +
+    `#LongWeekend #LiburNasional #Indonesia`
+  );
+}
+
+async function shareToX(text: string) {
+  const encoded = encodeURIComponent(text);
+  const url = `https://twitter.com/intent/tweet?text=${encoded}`;
+  const appUrl = `twitter://post?message=${encoded}`;
+  const canOpen = await Linking.canOpenURL(appUrl);
+  await Linking.openURL(canOpen ? appUrl : url);
+}
+
+async function shareToThreads(text: string) {
+  const encoded = encodeURIComponent(text);
+  const url = `https://www.threads.net/intent/post?text=${encoded}`;
+  await Linking.openURL(url);
+}
+
+async function shareToInstagram(text: string) {
+  await Share.share({message: text}, {dialogTitle: 'Bagikan ke Instagram'});
+}
+
+async function shareToTikTok(text: string) {
+  await Share.share({message: text}, {dialogTitle: 'Bagikan ke TikTok'});
+}
+
+type ShareModalProps = {
+  visible: boolean;
+  lw: typeof LONG_WEEKENDS_2026[0] | null;
+  onClose: () => void;
+};
+
+function ShareModal({visible, lw, onClose}: ShareModalProps) {
+  const [sharing, setSharing] = useState<string | null>(null);
+
+  if (!lw) {return null;}
+
+  const shareText = buildShareText(lw);
+
+  const handleShare = async (platformId: string) => {
+    setSharing(platformId);
+    try {
+      switch (platformId) {
+        case 'x':
+          await shareToX(shareText);
+          break;
+        case 'threads':
+          await shareToThreads(shareText);
+          break;
+        case 'instagram':
+          await shareToInstagram(shareText);
+          break;
+        case 'tiktok':
+          await shareToTikTok(shareText);
+          break;
+      }
+    } catch (_) {
+      // user cancelled or error
+    } finally {
+      setSharing(null);
+      if (platformId === 'instagram' || platformId === 'tiktok') {
+        onClose();
+      }
+    }
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}>
+      <Pressable style={styles.modalOverlay} onPress={onClose}>
+        <Pressable style={styles.modalSheet} onPress={() => {}}>
+          {/* Handle bar */}
+          <View style={styles.handleBar} />
+
+          <Text style={styles.modalTitle}>Bagikan Long Weekend</Text>
+          <Text style={styles.modalSubtitle} numberOfLines={2}>
+            🏖️ {lw.label} · {formatLongWeekendRange(lw)} · {lw.totalDays} hari
+          </Text>
+
+          <View style={styles.platformRow}>
+            {SOCIAL_PLATFORMS.map(p => (
+              <TouchableOpacity
+                key={p.id}
+                style={styles.platformButton}
+                onPress={() => handleShare(p.id)}
+                disabled={sharing !== null}
+                activeOpacity={0.75}>
+                <View
+                  style={[
+                    styles.platformIconWrap,
+                    {backgroundColor: p.bg},
+                    sharing === p.id && styles.platformIconActive,
+                  ]}>
+                  <Text style={[styles.platformIcon, {color: p.color}]}>
+                    {p.icon}
+                  </Text>
+                </View>
+                <Text style={styles.platformLabel}>{p.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.shareHint}>
+            Instagram & TikTok: pilih aplikasi dari menu berbagi
+          </Text>
+
+          <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+            <Text style={styles.cancelText}>Batal</Text>
+          </TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
 export default function LongWeekendScreen() {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+
+  const [shareTarget, setShareTarget] = useState<typeof LONG_WEEKENDS_2026[0] | null>(null);
 
   const upcoming = LONG_WEEKENDS_2026.filter(lw => {
     const end = new Date(lw.endDate + 'T00:00:00');
@@ -81,18 +249,28 @@ export default function LongWeekendScreen() {
               </View>
             </View>
 
-            {/* Day count badge */}
-            <View
-              style={[
-                styles.dayBadge,
-                {backgroundColor: isPast ? COLORS.border : accentColor},
-              ]}>
-              <Text style={[styles.dayBadgeNumber, isPast && {color: COLORS.textSub}]}>
-                {lw.totalDays}
-              </Text>
-              <Text style={[styles.dayBadgeText, isPast && {color: COLORS.textSub}]}>
-                hari
-              </Text>
+            <View style={styles.lwHeaderRight}>
+              {/* Day count badge */}
+              <View
+                style={[
+                  styles.dayBadge,
+                  {backgroundColor: isPast ? COLORS.border : accentColor},
+                ]}>
+                <Text style={[styles.dayBadgeNumber, isPast && {color: COLORS.textSub}]}>
+                  {lw.totalDays}
+                </Text>
+                <Text style={[styles.dayBadgeText, isPast && {color: COLORS.textSub}]}>
+                  hari
+                </Text>
+              </View>
+
+              {/* Share button */}
+              <TouchableOpacity
+                style={styles.shareBtn}
+                onPress={() => setShareTarget(lw)}
+                activeOpacity={0.7}>
+                <Text style={styles.shareBtnIcon}>↗</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -199,6 +377,12 @@ export default function LongWeekendScreen() {
 
         <View style={styles.bottomSpace} />
       </ScrollView>
+
+      <ShareModal
+        visible={shareTarget !== null}
+        lw={shareTarget}
+        onClose={() => setShareTarget(null)}
+      />
     </View>
   );
 }
@@ -309,6 +493,11 @@ const styles = StyleSheet.create({
     gap: 10,
     flex: 1,
   },
+  lwHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   lwEmoji: {
     fontSize: 28,
   },
@@ -339,6 +528,22 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.85)',
+  },
+  shareBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareBtnIcon: {
+    fontSize: 18,
+    color: COLORS.text,
+    fontWeight: '700',
+    lineHeight: 20,
   },
   countdownRow: {
     marginBottom: 10,
@@ -383,5 +588,94 @@ const styles = StyleSheet.create({
   },
   bottomSpace: {
     height: 30,
+  },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: COLORS.overlay,
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: COLORS.card,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 24,
+    paddingTop: 12,
+  },
+  handleBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: COLORS.border,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.text,
+    textAlign: 'center',
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: COLORS.textSub,
+    textAlign: 'center',
+    marginTop: 6,
+    marginBottom: 24,
+  },
+  platformRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  platformButton: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  platformIconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+  },
+  platformIconActive: {
+    opacity: 0.6,
+  },
+  platformIcon: {
+    fontSize: 26,
+    fontWeight: '900',
+  },
+  platformLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: COLORS.text,
+  },
+  shareHint: {
+    fontSize: 11,
+    color: COLORS.textSub,
+    textAlign: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 8,
+  },
+  cancelButton: {
+    backgroundColor: COLORS.bg,
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  cancelText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.text,
   },
 });
