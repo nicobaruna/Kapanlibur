@@ -1,4 +1,4 @@
-import React, {useState, useMemo} from 'react';
+import React, {useState, useMemo, useEffect} from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import {Calendar, DateData} from 'react-native-calendars';
+import {useRoute} from '@react-navigation/native';
 import {HOLIDAYS_2026, LONG_WEEKENDS_2026, Holiday} from '../data/holidays2026';
 import {formatDate, formatMonthYear, getDaysUntil} from '../utils/dateUtils';
 
@@ -39,7 +40,17 @@ type MarkedDates = {
 
 export default function CalendarScreen() {
   const today = new Date().toISOString().split('T')[0];
+  const route = useRoute<any>();
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [calendarKey, setCalendarKey] = useState('default');
+
+  useEffect(() => {
+    const params = route.params as {selectedDate?: string} | undefined;
+    if (params?.selectedDate) {
+      setSelectedDate(params.selectedDate);
+      setCalendarKey(params.selectedDate);
+    }
+  }, [route.params]);
 
   // Build marked dates for calendar
   const markedDates = useMemo<MarkedDates>(() => {
@@ -194,10 +205,11 @@ export default function CalendarScreen() {
 
         {/* Calendar */}
         <Calendar
+          key={calendarKey}
           markingType="multi-dot"
           markedDates={markedDates}
           onDayPress={onDayPress}
-          initialDate={today}
+          initialDate={selectedDate || today}
           minDate="2026-01-01"
           maxDate="2026-12-31"
           theme={{

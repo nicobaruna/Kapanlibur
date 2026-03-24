@@ -118,6 +118,9 @@ export class NotificationService {
         smallIcon: 'ic_notification',
         color: '#C8102E',
         importance: AndroidImportance.HIGH,
+        pressAction: {
+          id: 'default',
+        },
       },
     });
   }

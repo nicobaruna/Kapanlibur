@@ -24,6 +24,7 @@ import {
   countdownLabel,
 } from '../utils/dateUtils';
 import {NotificationService} from '../services/NotificationService';
+import {updateWidget} from '../services/WidgetService';
 
 const COLORS = {
   red: '#C8102E',
@@ -52,6 +53,7 @@ export default function DashboardScreen() {
     setNextHoliday(getNextHoliday());
     setUpcomingHolidays(getUpcomingHolidays(6));
     setNextLongWeekend(getNextLongWeekend());
+    updateWidget();
   }, []);
 
   useFocusEffect(

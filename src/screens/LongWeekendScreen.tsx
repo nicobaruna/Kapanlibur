@@ -6,7 +6,9 @@ import {
   ScrollView,
   StatusBar,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
+import {useNavigation} from '@react-navigation/native';
 import {LONG_WEEKENDS_2026} from '../data/holidays2026';
 import {
   formatLongWeekendRange,
@@ -36,6 +38,7 @@ const DAY_COLORS = [
 ];
 
 export default function LongWeekendScreen() {
+  const navigation = useNavigation<any>();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -55,8 +58,10 @@ export default function LongWeekendScreen() {
     const isActive = getDaysUntil(lw.startDate) <= 0 && getDaysUntil(lw.endDate) >= 0;
 
     return (
-      <View
+      <TouchableOpacity
         key={`${lw.startDate}-${lw.endDate}`}
+        activeOpacity={0.75}
+        onPress={() => navigation.navigate('Calendar', {selectedDate: lw.startDate})}
         style={[
           styles.lwCard,
           isPast && styles.lwCardPast,
@@ -140,7 +145,7 @@ export default function LongWeekendScreen() {
               ))}
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 

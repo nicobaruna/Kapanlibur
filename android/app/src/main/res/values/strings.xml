@@ -1,3 +1,4 @@
 <resources>
   <string name="app_name">LiburIndonesia</string>
+  <string name="widget_description">Tampilkan hari libur terdekat dan countdown di layar utama</string>
 </resources>

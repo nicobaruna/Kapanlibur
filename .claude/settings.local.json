@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find D:/dev/Kapanlibur/android -name ic_notification*)"
+    ]
+  }
+}
