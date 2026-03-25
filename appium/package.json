@@ -1,0 +1,28 @@
+{
+  "name": "kapanlibur-appium-tests",
+  "version": "1.0.0",
+  "description": "Appium E2E tests for Kapanlibur Android app",
+  "scripts": {
+    "test": "wdio run wdio.conf.js",
+    "test:login": "wdio run wdio.conf.js --spec tests/login.test.js",
+    "test:onboarding": "wdio run wdio.conf.js --spec tests/onboarding.test.js",
+    "test:dashboard": "wdio run wdio.conf.js --spec tests/dashboard.test.js",
+    "test:calendar": "wdio run wdio.conf.js --spec tests/calendar.test.js",
+    "test:longweekend": "wdio run wdio.conf.js --spec tests/longweekend.test.js",
+    "test:share": "wdio run wdio.conf.js --spec tests/share.test.js",
+    "test:financial": "wdio run wdio.conf.js --spec tests/financial.test.js",
+    "test:profile": "wdio run wdio.conf.js --spec tests/profile.test.js"
+  },
+  "dependencies": {
+    "@wdio/appium-service": "^8.36.1",
+    "@wdio/cli": "^8.36.1",
+    "@wdio/jasmine-framework": "^8.36.1",
+    "@wdio/local-runner": "^8.36.1",
+    "@wdio/spec-reporter": "^8.36.1",
+    "@wdio/allure-reporter": "^8.36.1",
+    "allure-commandline": "^2.30.0",
+    "appium": "^2.5.0",
+    "appium-uiautomator2-driver": "^3.7.0",
+    "webdriverio": "^8.36.1"
+  }
+}
